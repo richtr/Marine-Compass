@@ -17,7 +17,7 @@ As of 15-Jun 2012 only [Opera Mobile 12 for Android](https://play.google.com/sto
 Simply clone this repo as follows:
 
     git clone git@github.com:richtr/Marine-Compass.git
-    
+
 Load 'index.html' and enjoy!
 
 An online demo is available @ [http://people.opera.com/richt/release/demos/orientation/marinecompass](http://people.opera.com/richt/release/demos/orientation/marinecompass).

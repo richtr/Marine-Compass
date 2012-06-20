@@ -1,8 +1,9 @@
 CACHE MANIFEST
-# 2012-06-15:v0.22
+# 2012-06-15:v0.33
 
 CACHE:
 index.html
 webgl-utils.js
 matrix4x4.js
 compass.js
+cwebgl.min.js

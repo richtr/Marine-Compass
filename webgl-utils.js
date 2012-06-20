@@ -28,10 +28,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
- /*
-  * Modified to also check for Device Orientation API support
-  */
-
 
 /**
  * @fileoverview This file contains functions every webgl program will need
@@ -117,13 +113,10 @@ var setupWebGL = function(canvas, opt_attribs) {
   };
 
   if (!window.WebGLRenderingContext) {
+      console.log()
     showLink(GET_A_WEBGL_BROWSER);
     return null;
   }
-
-  /*if(!window.ondeviceorientation) {
-    showLink(GET_DEVICE_ORIENTATION_BROWSER);
-  }*/
 
   var context = create3DContext(canvas, opt_attribs);
   if (!context) {
