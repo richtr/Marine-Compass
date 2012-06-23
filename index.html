@@ -6,12 +6,16 @@
 <meta name="viewport" content="user-scalable=no, initial-scale=1">
 
 <style>
-body { margin: 0; padding: 0; }
-#glCanvas { position: absolute; top: 0; }
+  body { margin: 0; padding: 0; }
+  #glCanvas { position: absolute; top: 0; }
 </style>
 
 <script type="text/javascript" src="webgl-utils.js"></script>
 <script type="text/javascript" src="matrix4x4.js"></script>
+
+<script type="text/javascript" src="orientationChange.js"></script>
+<script type="text/javascript" src="requestAnimationFrame.js"></script>
+
 <script type="text/javascript" src="compass.js"></script>
 
 <script>
@@ -30,7 +34,7 @@ window.addEventListener('load', function() {
 </head>
 
 <body>
-<canvas id="glCanvas" width="320" height="240"></canvas>
+  <canvas id="glCanvas" width="320" height="240"></canvas>
 </body>
 
 </html>

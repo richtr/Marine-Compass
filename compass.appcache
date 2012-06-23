@@ -1,9 +1,11 @@
 CACHE MANIFEST
-# 2012-06-15:v0.33
+# 2012-06-23:v0.6
 
 CACHE:
 index.html
+requestAnimationFrame.js
+orientationChange.js
 webgl-utils.js
 matrix4x4.js
 compass.js
-cwebgl.min.js
+

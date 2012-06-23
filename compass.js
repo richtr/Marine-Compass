@@ -95,7 +95,7 @@
             this.gl.viewportHeight = canvasElement.getAttribute('height');
         }
         catch(e) {}
-
+        
         if (!this.gl) return;
 
         this.init();
@@ -112,24 +112,35 @@
 
             var self = this;
 
-            // Catch window resize event
-            window.addEventListener('resize', function() {
-
-                // Adjust the width and height
-                self.canvasElement.setAttribute('width', window.innerWidth);
-                self.canvasElement.setAttribute('height', window.innerHeight);
-
-                self.gl.viewportWidth = self.canvasElement.getAttribute('width');
-                self.gl.viewportHeight = self.canvasElement.getAttribute('height');
-
-                // Rescale webgl viewport
-                self.gl.viewport(0, 0, self.gl.viewportWidth, self.gl.viewportHeight);
-
-            },
-            true);
-
             // CompassRenderer manages 3D objects and gl surface life cycle
             this.mCompassRenderer = new CompassRenderer(this);
+            
+            // Catch window resize event
+            window.addEventListener('orientationchange', function() {
+              
+                self.gl.viewportWidth = self.canvasElement.width = window.innerWidth;
+                self.gl.viewportHeight = self.canvasElement.height = window.innerHeight;
+                
+                // Rescale webgl viewport
+                self.gl.viewport(0, 0, self.gl.viewportWidth, self.gl.viewportHeight);
+                
+                // Recalculate perspective
+                self.mCompassRenderer.pMatrix.loadIdentity();
+                self.mCompassRenderer.pMatrix.perspective(45, self.gl.viewportWidth / self.gl.viewportHeight, 0.1, 100);
+                self.gl.uniformMatrix4fv(
+                  self.gl.getUniformLocation(self.mCompassRenderer.shaderProgram, "uPMatrix"), 
+                  false, self.mCompassRenderer.pMatrix.elements
+                );
+                
+                // Rotate the canvas to compensate for screen orientation change
+                self.canvasElement.style.MozTransform = 
+                  self.canvasElement.style.MsTransform = 
+                    self.canvasElement.style.WebkitTransform = 
+                      self.canvasElement.style.OTransform = 
+                        self.canvasElement.style.Transform = 
+                          "rotate(" + (-window.orientation) + "deg)";
+
+            }, true);
 
             function createRingMAngles() {
                 var _mAngles = new Array(3);
@@ -176,6 +187,7 @@
 
                 },
                 true);
+
             //}
             //this.gl.clearColor(0.3, 0.3, 0.3, 0);
             this.gl.clearDepth(500);
@@ -210,46 +222,46 @@
               this.mAngles[1][1] -= this.mAnglesRingBuffer[this.mRingBufferIndex][1][1];
               this.mAngles[2][0] -= this.mAnglesRingBuffer[this.mRingBufferIndex][2][0];
               this.mAngles[2][1] -= this.mAnglesRingBuffer[this.mRingBufferIndex][2][1];
-        } else {
-          this.mNumAngles++;
-        }
+            } else {
+              this.mNumAngles++;
+            }
 
-        // convert event inputs to radians
-        var alpha = toRad(this.lastOrientEvent.alpha);
-        var beta  = toRad(this.lastOrientEvent.beta);
-        var gamma = toRad(this.lastOrientEvent.gamma);
+            // convert event inputs to radians
+            var alpha = toRad(this.lastOrientEvent.alpha);
+            var beta  = toRad(this.lastOrientEvent.beta);
+            var gamma = toRad(this.lastOrientEvent.gamma);
 
-        // convert angles into x/y
-        this.mAnglesRingBuffer[this.mRingBufferIndex][0][0] = Math.cos(alpha);
-        this.mAnglesRingBuffer[this.mRingBufferIndex][0][1] = Math.sin(alpha);
-        this.mAnglesRingBuffer[this.mRingBufferIndex][1][0] = Math.cos(beta);
-        this.mAnglesRingBuffer[this.mRingBufferIndex][1][1] = Math.sin(beta);
-        this.mAnglesRingBuffer[this.mRingBufferIndex][2][0] = Math.cos(gamma);
-        this.mAnglesRingBuffer[this.mRingBufferIndex][2][1] = Math.sin(gamma);
+            // convert angles into x/y
+            this.mAnglesRingBuffer[this.mRingBufferIndex][0][0] = Math.cos(alpha);
+            this.mAnglesRingBuffer[this.mRingBufferIndex][0][1] = Math.sin(alpha);
+            this.mAnglesRingBuffer[this.mRingBufferIndex][1][0] = Math.cos(beta);
+            this.mAnglesRingBuffer[this.mRingBufferIndex][1][1] = Math.sin(beta);
+            this.mAnglesRingBuffer[this.mRingBufferIndex][2][0] = Math.cos(gamma);
+            this.mAnglesRingBuffer[this.mRingBufferIndex][2][1] = Math.sin(gamma);
 
-        // accumulate new x/y vector
-        this.mAngles[0][0] += this.mAnglesRingBuffer[this.mRingBufferIndex][0][0];
-        this.mAngles[0][1] += this.mAnglesRingBuffer[this.mRingBufferIndex][0][1];
-        this.mAngles[1][0] += this.mAnglesRingBuffer[this.mRingBufferIndex][1][0];
-        this.mAngles[1][1] += this.mAnglesRingBuffer[this.mRingBufferIndex][1][1];
-        this.mAngles[2][0] += this.mAnglesRingBuffer[this.mRingBufferIndex][2][0];
-        this.mAngles[2][1] += this.mAnglesRingBuffer[this.mRingBufferIndex][2][1];
+            // accumulate new x/y vector
+            this.mAngles[0][0] += this.mAnglesRingBuffer[this.mRingBufferIndex][0][0];
+            this.mAngles[0][1] += this.mAnglesRingBuffer[this.mRingBufferIndex][0][1];
+            this.mAngles[1][0] += this.mAnglesRingBuffer[this.mRingBufferIndex][1][0];
+            this.mAngles[1][1] += this.mAnglesRingBuffer[this.mRingBufferIndex][1][1];
+            this.mAngles[2][0] += this.mAnglesRingBuffer[this.mRingBufferIndex][2][0];
+            this.mAngles[2][1] += this.mAnglesRingBuffer[this.mRingBufferIndex][2][1];
 
-        this.mRingBufferIndex++;
-        if(this.mRingBufferIndex == this.RING_BUFFER_SIZE) {
-          this.mRingBufferIndex=0;
-        }
+            this.mRingBufferIndex++;
+            if(this.mRingBufferIndex == this.RING_BUFFER_SIZE) {
+              this.mRingBufferIndex=0;
+            }
 
-        // convert back x/y into angles
-        var azimuth = toDeg(Math.atan2(this.mAngles[0][1], this.mAngles[0][0]));
-        var pitch   = toDeg(Math.atan2(this.mAngles[1][1], this.mAngles[1][0]));
-        var roll    = toDeg(Math.atan2(this.mAngles[2][1], this.mAngles[2][0]));
+            // convert back x/y into angles
+            var azimuth = toDeg(Math.atan2(this.mAngles[0][1], this.mAngles[0][0]));
+            var pitch   = toDeg(Math.atan2(this.mAngles[1][1], this.mAngles[1][0]));
+            var roll    = toDeg(Math.atan2(this.mAngles[2][1], this.mAngles[2][0]));
 
-        this.mCompassRenderer.setOrientation(azimuth, pitch, roll);
+            this.mCompassRenderer.setOrientation(azimuth, pitch, roll);
 
-        // set text heading
-        /* if(azimuth < 0) azimuth = (360 + azimuth) % 360;
-           this.mHeadingView.setText("Heading: " + azimuth + "&degrees;"); */
+            // set text heading
+            /* if(azimuth < 0) azimuth = (360 + azimuth) % 360;
+               this.mHeadingView.setText("Heading: " + azimuth + "&degrees;"); */
 
         },
 
@@ -263,7 +275,7 @@
 
             // Re-render at next key frame
             // see: http://stackoverflow.com/questions/6065169/requestanimationframe-with-this-keyword
-            window.requestAnimFrame(this.render.bind(this));
+            window.requestAnimationFrame(this.render.bind(this));
         }
 
     };
@@ -344,7 +356,7 @@
 
             this.shaderProgram.shaderUniform = this.gl.getUniformLocation(this.shaderProgram, "uSampler");
 
-            /* TODO: move this out to only be calculuated on init + any resize */
+            // Calculate perspective
             this.pMatrix.loadIdentity();
             this.pMatrix.perspective(45, this.gl.viewportWidth / this.gl.viewportHeight, 0.1, 100);
             this.gl.uniformMatrix4fv(this.gl.getUniformLocation(this.shaderProgram, "uPMatrix"), false, this.pMatrix.elements);
