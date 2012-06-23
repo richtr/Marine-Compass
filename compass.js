@@ -25,7 +25,7 @@
   * URLs:      http://www.pierrox.net/cmsms/applications/marine-compass.html
   */
 
-!(function(window, undefined) {
+ ! (function(window, undefined) {
 
     var document = window.document;
 
@@ -41,21 +41,15 @@
     "attribute vec3 aVertexPosition;",
     "attribute vec2 aTextureCoord;",
     "",
-    "uniform vec3 lightDir;",
-    "",
     "uniform mat4 uMVMatrix;",
     "uniform mat4 uPMatrix;",
     "uniform mat4 uNMatrix;",
-    "",
-    "varying float v_Dot;",
     "",
     "varying mediump vec2 vTextureCoord;",
     "",
     "void main(void) {",
     "  gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);",
     "  vTextureCoord = aTextureCoord;",
-    "    vec4 transNormal = uNMatrix * vec4(aNormalPosition, 1);",
-    "    v_Dot = max(dot(transNormal.xyz, lightDir), 0.0);",
     "}"
     ].join("\n");
 
@@ -66,13 +60,7 @@
     "",
     "uniform sampler2D uSampler;",
     "",
-    "varying float v_Dot;",
-    "",
     "void main(void) {",
-    /*"    vec2 texCoord = vec2(vTextureCoord.s, vTextureCoord.t);",
-    "    vec4 color = texture2D(uSampler, texCoord);",
-    "    color += vec4(0.1, 0.1, 0.1, 1);",
-    "    gl_FragColor = texture2D(uSampler, vec2(color.xyz * v_Dot, color.a));",*/
     "  gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));",
     "}"
     ].join("\n");
@@ -95,7 +83,7 @@
             this.gl.viewportHeight = canvasElement.getAttribute('height');
         }
         catch(e) {}
-        
+
         if (!this.gl) return;
 
         this.init();
@@ -114,41 +102,45 @@
 
             // CompassRenderer manages 3D objects and gl surface life cycle
             this.mCompassRenderer = new CompassRenderer(this);
-            
+
             // Catch window resize event
             window.addEventListener('orientationchange', function() {
-              
+
+              window.setTimeout(function() {
+
                 self.gl.viewportWidth = self.canvasElement.width = window.innerWidth;
                 self.gl.viewportHeight = self.canvasElement.height = window.innerHeight;
-                
+
                 // Rescale webgl viewport
                 self.gl.viewport(0, 0, self.gl.viewportWidth, self.gl.viewportHeight);
-                
+
                 // Recalculate perspective
                 self.mCompassRenderer.pMatrix.loadIdentity();
                 self.mCompassRenderer.pMatrix.perspective(45, self.gl.viewportWidth / self.gl.viewportHeight, 0.1, 100);
                 self.gl.uniformMatrix4fv(
-                  self.gl.getUniformLocation(self.mCompassRenderer.shaderProgram, "uPMatrix"), 
-                  false, self.mCompassRenderer.pMatrix.elements
+                self.gl.getUniformLocation(self.mCompassRenderer.shaderProgram, "uPMatrix"),
+                false, self.mCompassRenderer.pMatrix.elements
                 );
-                
+
                 // Rotate the canvas to compensate for screen orientation change
-                self.canvasElement.style.MozTransform = 
-                  self.canvasElement.style.MsTransform = 
-                    self.canvasElement.style.WebkitTransform = 
-                      self.canvasElement.style.OTransform = 
-                        self.canvasElement.style.Transform = 
-                          "rotate(" + (-window.orientation) + "deg)";
+                self.canvasElement.style.MozTransform =
+                  self.canvasElement.style.MsTransform =
+                    self.canvasElement.style.WebkitTransform =
+                      self.canvasElement.style.OTransform =
+                        self.canvasElement.style.Transform =
+                          "rotate(" + ( -window.orientation ) + "deg)";
+
+              }, 70);
 
             }, true);
 
             function createRingMAngles() {
                 var _mAngles = new Array(3);
-                for(var i = 0, l = _mAngles.length; i < l; i++) {
-                  _mAngles[i] = new Array(2);
-                  for(var j = 0, m = _mAngles[i].length; j < m; j++) {
-                    _mAngles[i][j] = 0;
-                  }
+                for (var i = 0, l = _mAngles.length; i < l; i++) {
+                    _mAngles[i] = new Array(2);
+                    for (var j = 0, m = _mAngles[i].length; j < m; j++) {
+                        _mAngles[i][j] = 0;
+                    }
                 }
                 return _mAngles;
             }
@@ -158,7 +150,7 @@
             this.mNumAngles = 0;
             this.mRingBufferIndex = 0;
             this.mAnglesRingBuffer = new Array(this.RING_BUFFER_SIZE);
-            for(var i = 0, l = this.mAnglesRingBuffer.length; i < l; i++) {
+            for (var i = 0, l = this.mAnglesRingBuffer.length; i < l; i++) {
                 this.mAnglesRingBuffer[i] = createRingMAngles();
             }
             this.mAngles = createRingMAngles();
@@ -166,30 +158,20 @@
             this.lastOrientEvent = null;
 
             // Start orientation listener
-            /*if(!window.ondeviceorientation) {
-                var container = this.canvasElement.parentNode;
-                if (container) {
-                    container.innerHTML = makeFailHTML('' +
-                      'This page requires a browser that supports Device Orientation Events.<br/>' +
-                      '<a href="http://caniuse.com/#feat=deviceorientation">Click here to check support by browser.</a>'
-                    );
-                }
-            } else {*/
-                window.addEventListener('deviceorientation', function(oEvent) {
+            window.addEventListener('deviceorientation',
+            function(oEvent) {
 
-                    // Simply store event result and we'll read from it at the
-                    // next request animation frame.
-                    self.lastOrientEvent = {
-                        alpha: oEvent.alpha || 0,
-                        beta: oEvent.beta || 0,
-                        gamma: oEvent.gamma || 0
-                    };
+                // Simply store event result and we'll read from it at the
+                // next request animation frame.
+                self.lastOrientEvent = {
+                    alpha: oEvent.alpha || 0,
+                    beta: oEvent.beta || 0,
+                    gamma: oEvent.gamma || 0
+                };
 
-                },
-                true);
+            },
+            true);
 
-            //}
-            //this.gl.clearColor(0.3, 0.3, 0.3, 0);
             this.gl.clearDepth(500);
 
             this.gl.viewport(0, 0, this.gl.viewportWidth, this.gl.viewportHeight);
@@ -212,23 +194,23 @@
 
         calculateOrientation: function() {
 
-            if(this.lastOrientEvent === null) return;
+            if (this.lastOrientEvent === null) return;
 
-            if(this.mNumAngles==this.RING_BUFFER_SIZE) {
-              // subtract oldest vector
-              this.mAngles[0][0] -= this.mAnglesRingBuffer[this.mRingBufferIndex][0][0];
-              this.mAngles[0][1] -= this.mAnglesRingBuffer[this.mRingBufferIndex][0][1];
-              this.mAngles[1][0] -= this.mAnglesRingBuffer[this.mRingBufferIndex][1][0];
-              this.mAngles[1][1] -= this.mAnglesRingBuffer[this.mRingBufferIndex][1][1];
-              this.mAngles[2][0] -= this.mAnglesRingBuffer[this.mRingBufferIndex][2][0];
-              this.mAngles[2][1] -= this.mAnglesRingBuffer[this.mRingBufferIndex][2][1];
+            if (this.mNumAngles == this.RING_BUFFER_SIZE) {
+                // subtract oldest vector
+                this.mAngles[0][0] -= this.mAnglesRingBuffer[this.mRingBufferIndex][0][0];
+                this.mAngles[0][1] -= this.mAnglesRingBuffer[this.mRingBufferIndex][0][1];
+                this.mAngles[1][0] -= this.mAnglesRingBuffer[this.mRingBufferIndex][1][0];
+                this.mAngles[1][1] -= this.mAnglesRingBuffer[this.mRingBufferIndex][1][1];
+                this.mAngles[2][0] -= this.mAnglesRingBuffer[this.mRingBufferIndex][2][0];
+                this.mAngles[2][1] -= this.mAnglesRingBuffer[this.mRingBufferIndex][2][1];
             } else {
-              this.mNumAngles++;
+                this.mNumAngles++;
             }
 
             // convert event inputs to radians
             var alpha = toRad(this.lastOrientEvent.alpha);
-            var beta  = toRad(this.lastOrientEvent.beta);
+            var beta = toRad(this.lastOrientEvent.beta);
             var gamma = toRad(this.lastOrientEvent.gamma);
 
             // convert angles into x/y
@@ -248,14 +230,14 @@
             this.mAngles[2][1] += this.mAnglesRingBuffer[this.mRingBufferIndex][2][1];
 
             this.mRingBufferIndex++;
-            if(this.mRingBufferIndex == this.RING_BUFFER_SIZE) {
-              this.mRingBufferIndex=0;
+            if (this.mRingBufferIndex == this.RING_BUFFER_SIZE) {
+                this.mRingBufferIndex = 0;
             }
 
             // convert back x/y into angles
             var azimuth = toDeg(Math.atan2(this.mAngles[0][1], this.mAngles[0][0]));
-            var pitch   = toDeg(Math.atan2(this.mAngles[1][1], this.mAngles[1][0]));
-            var roll    = toDeg(Math.atan2(this.mAngles[2][1], this.mAngles[2][0]));
+            var pitch = toDeg(Math.atan2(this.mAngles[1][1], this.mAngles[1][0]));
+            var roll = toDeg(Math.atan2(this.mAngles[2][1], this.mAngles[2][0]));
 
             this.mCompassRenderer.setOrientation(azimuth, pitch, roll);
 
@@ -289,6 +271,7 @@
         this.pMatrix = new Matrix4x4();
         this.mvMatrix = new Matrix4x4();
         this.nMatrix = new Matrix4x4();
+
         this.init();
 
         this.mTurntable = new Turntable(this);
@@ -380,7 +363,6 @@
             this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
             //this.gl.colorMask(1, 1, 1, 0);
-
             // Make a model/view matrix.
             this.mvMatrix.loadIdentity();
             this.mvMatrix.translate(0.0, 0.0, -4.0);
@@ -757,13 +739,11 @@
             var self = this;
             image.onload = function() {
                 //self.gl.activeTexture(self.gl.TEXTURE0);
-
                 self.gl.bindTexture(self.gl.TEXTURE_2D, self.mTextures[self.TEXTURE_RING]);
 
                 self.gl.pixelStorei(self.gl.UNPACK_ALIGNMENT, 1);
 
                 //self.gl.uniform1i(self.compassrenderer.shaderProgram.shaderUniform, 0);
-
                 self.gl.texImage2D(self.gl.TEXTURE_2D, 0, self.gl.RGBA, self.gl.RGBA, self.gl.UNSIGNED_BYTE, image);
 
                 self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_MAG_FILTER, self.gl.LINEAR);
@@ -909,13 +889,11 @@
             image.onload = function() {
 
                 //self.gl.activeTexture(self.gl.TEXTURE1);
-
                 self.gl.bindTexture(self.gl.TEXTURE_2D, self.mTextures[self.TEXTURE_DIAL]);
 
                 self.gl.pixelStorei(self.gl.UNPACK_ALIGNMENT, 1);
 
                 //self.gl.uniform1i(self.compassrenderer.shaderProgram.shaderUniform, 1);
-
                 self.gl.texImage2D(self.gl.TEXTURE_2D, 0, self.gl.RGBA, self.gl.RGBA, self.gl.UNSIGNED_BYTE, image);
 
                 self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_MAG_FILTER, self.gl.LINEAR);
@@ -951,7 +929,6 @@
             this.gl.enableVertexAttribArray(1);
 
             // Draw Ring Object
-
             this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.mRingVertexBufferGL);
             this.gl.vertexAttribPointer(2, this.mRingVertexBufferGL.itemSize, this.gl.FLOAT, false, 0, 0);
 
@@ -964,13 +941,11 @@
             //this.gl.activeTexture(this.gl.TEXTURE0);
             this.gl.bindTexture(this.gl.TEXTURE_2D, this.mTextures[this.TEXTURE_RING]);
             //this.gl.uniform1i(this.compassrenderer.shaderProgram.shaderUniform, 0);
-
             this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.mRingIndexBufferGL);
 
             this.gl.drawElements(this.gl.TRIANGLES, dx * rh * 6, this.gl.UNSIGNED_SHORT, 0);
 
             // Draw Dial Object
-
             this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.mDialVertexBufferGL);
             this.gl.vertexAttribPointer(2, this.mDialVertexBufferGL.itemSize, this.gl.FLOAT, false, 0, 0);
 
@@ -983,7 +958,6 @@
             //this.gl.activeTexture(this.gl.TEXTURE1);
             this.gl.bindTexture(this.gl.TEXTURE_2D, this.mTextures[this.TEXTURE_DIAL]);
             //this.gl.uniform1i(this.compassrenderer.shaderProgram.shaderUniform, 1);
-
             this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.mDialIndexBufferGL);
 
             this.gl.drawElements(this.gl.TRIANGLE_FAN, dx + 2, this.gl.UNSIGNED_SHORT, 0);
