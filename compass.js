@@ -64,6 +64,20 @@
     "  gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));",
     "}"
     ].join("\n");
+    
+    var create3DContext = function(canvas, opt_attribs) {
+      var names = ["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"];
+      var context = null;
+      for (var ii = 0; ii < names.length; ii++) {
+        try {
+          context = canvas.getContext(names[ii], opt_attribs);
+        } catch(e) {}
+        if (context) {
+          break;
+        }
+      }
+      return context;
+    };
 
     // +++ COMPASS +++
     window.Compass = function(canvasElement) {
@@ -78,7 +92,7 @@
         this.canvasElement = canvasElement;
 
         try {
-            this.gl = WebGLUtils.setupWebGL(canvasElement);
+            this.gl = create3DContext(canvasElement);
             this.gl.viewportWidth = canvasElement.getAttribute('width');
             this.gl.viewportHeight = canvasElement.getAttribute('height');
         }

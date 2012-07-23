@@ -26,18 +26,38 @@
   }
 </style>
 
-<script type="text/javascript" src="webgl-utils.js"></script>
-<script type="text/javascript" src="matrix4x4.js"></script>
+<!-- COMPASS -->
 
 <script type="text/javascript" src="orientationChange.js"></script>
 <script type="text/javascript" src="requestAnimationFrame.js"></script>
 
+<script type="text/javascript" src="matrix4x4.js"></script>
 <script type="text/javascript" src="compass.js"></script>
+
+<!-- FEATURE DETECTION -->
+
+<link rel="stylesheet" href="featuredetection/styles/panel.css">
+<script src="featuredetection/modernizr.js"></script>
+<script src="featuredetection/panel.js"></script>
 
 <script>
 
 window.addEventListener('load', function() {
 
+  /* Pretty Print Feature Detection */
+  if(window.FeaturePanel) {
+    new FeaturePanel({
+      title: 'Marine Compass',
+      legend: 'A fully web standards compliant JavaScript 3D Compass application.',
+      link: 'https://github.com/richtr/Marine-Compass',
+      features: [
+        {name: 'deviceorientation', title: 'Device Orientation Events', link: 'http://caniuse.com/#feat=deviceorientation'},
+        {name: 'webgl', title: 'WebGL', link: 'http://caniuse.com/#feat=webgl'}
+      ]
+    });
+  }
+
+  /* Compass Web App */
   var canvasElement = document.getElementById('glCanvas');
   canvasElement.setAttribute('width', window.innerWidth);
   canvasElement.setAttribute('height', window.innerHeight);

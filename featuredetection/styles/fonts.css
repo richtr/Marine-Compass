@@ -1,0 +1,10 @@
+/* Bebas Neue
+---------------------------------------- */
+@font-face {
+  font-family:'Bebas Neue';
+  src:url(../fonts/bebasneue.eot);
+  src:url(../fonts/bebasneue.eot?#iefix) format('embedded-opentype'),
+    url(../fonts/bebasneue.woff) format('woff'),
+    url(../fonts/bebasneue.ttf) format('truetype'),
+    url(../fonts/bebasneue.svg#BebasNeue) format('svg');
+  }

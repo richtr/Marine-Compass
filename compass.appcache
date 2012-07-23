@@ -1,12 +1,28 @@
 CACHE MANIFEST
-# 2012-07-23:v0.6.3
+# 2012-07-23:v0.6.4
 
 CACHE:
+
+# Marine Compass Resources
 index.html
 requestAnimationFrame.js
 orientationChange.js
-webgl-utils.js
 matrix4x4.js
 compass.js
 images/bg.jpg
+
+# Feature Detection Panel Resources
+featuredetection/panel.js
+featuredetection/modernizr.js
+featuredetection/styles/panel.css
+featuredetection/styles/fonts.css
+featuredetection/images/cubes-header.png
+featuredetection/images/denim.png
+featuredetection/images/icons.png
+featuredetection/fonts/bebasneue.eot
+featuredetection/fonts/bebasneue.svg
+featuredetection/fonts/bebasneue.ttf
+featuredetection/fonts/bebasneue.woff
+
+
 
