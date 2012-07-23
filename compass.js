@@ -299,7 +299,7 @@
         },
 
         init: function() {
-            this.setOrientation(0, 0, 0);
+            this.setOrientation(0, 60, 0);
             // initialize
             var vertexShader = this.loadShader(this.gl.VERTEX_SHADER, compassVertexSource);
             var fragmentShader = this.loadShader(this.gl.FRAGMENT_SHADER, compassFragmentSource);
