@@ -35,6 +35,9 @@
     function toDeg(val) {
         return val * 180 / Math.PI;
     }
+    
+    var HALF_PI = Math.PI / 2,
+        TWO_PI = Math.PI * 2;
 
     var compassVertexSource = [
     "attribute vec3 aNormalPosition;",
@@ -129,11 +132,12 @@
                 self.gl.viewport(0, 0, self.gl.viewportWidth, self.gl.viewportHeight);
 
                 // Recalculate perspective
-                self.mCompassRenderer.pMatrix.loadIdentity();
-                self.mCompassRenderer.pMatrix.perspective(45, self.gl.viewportWidth / self.gl.viewportHeight, 0.1, 100);
+                
+                mat4.identity(self.mCompassRenderer.pMatrix);
+                mat4.perspective(45, self.gl.viewportWidth / self.gl.viewportHeight, 1, 100, self.mCompassRenderer.pMatrix);
                 self.gl.uniformMatrix4fv(
                 self.gl.getUniformLocation(self.mCompassRenderer.shaderProgram, "uPMatrix"),
-                false, self.mCompassRenderer.pMatrix.elements
+                false, self.mCompassRenderer.pMatrix
                 );
 
                 // Rotate the canvas to compensate for screen orientation change
@@ -249,15 +253,11 @@
             }
 
             // convert back x/y into angles
-            var azimuth = toDeg(Math.atan2(this.mAngles[0][1], this.mAngles[0][0]));
-            var pitch = toDeg(Math.atan2(this.mAngles[1][1], this.mAngles[1][0]));
-            var roll = toDeg(Math.atan2(this.mAngles[2][1], this.mAngles[2][0]));
+            var azimuth = Math.atan2(this.mAngles[0][1], this.mAngles[0][0]);
+            var pitch = Math.atan2(this.mAngles[1][1], this.mAngles[1][0]);
+            var roll = Math.atan2(this.mAngles[2][1], this.mAngles[2][0]);
 
             this.mCompassRenderer.setOrientation(azimuth, pitch, roll);
-
-            // set text heading
-            /* if(azimuth < 0) azimuth = (360 + azimuth) % 360;
-               this.mHeadingView.setText("Heading: " + azimuth + "&degrees;"); */
 
         },
 
@@ -282,9 +282,9 @@
         this.compass = compass;
         this.gl = this.compass.gl;
 
-        this.pMatrix = new Matrix4x4();
-        this.mvMatrix = new Matrix4x4();
-        this.nMatrix = new Matrix4x4();
+        this.pMatrix = mat4.create();
+        this.mvMatrix = mat4.create();
+        this.nMatrix = mat4.create();
 
         this.init();
 
@@ -313,7 +313,7 @@
         },
 
         init: function() {
-            this.setOrientation(0, 60, 0);
+            this.setOrientation(0, Math.PI / 3, 0);
             // initialize
             var vertexShader = this.loadShader(this.gl.VERTEX_SHADER, compassVertexSource);
             var fragmentShader = this.loadShader(this.gl.FRAGMENT_SHADER, compassFragmentSource);
@@ -354,15 +354,15 @@
             this.shaderProgram.shaderUniform = this.gl.getUniformLocation(this.shaderProgram, "uSampler");
 
             // Calculate perspective
-            this.pMatrix.loadIdentity();
-            this.pMatrix.perspective(45, this.gl.viewportWidth / this.gl.viewportHeight, 0.1, 100);
-            this.gl.uniformMatrix4fv(this.gl.getUniformLocation(this.shaderProgram, "uPMatrix"), false, this.pMatrix.elements);
+            mat4.identity(this.pMatrix);
+            mat4.perspective(45, this.gl.viewportWidth / this.gl.viewportHeight, 1, 100, this.pMatrix);
+            this.gl.uniformMatrix4fv(this.gl.getUniformLocation(this.shaderProgram, "uPMatrix"), false, this.pMatrix);
 
         },
 
         setMatrixUniforms: function() {
-            this.gl.uniformMatrix4fv(this.shaderProgram.mvMatrixUniform, false, this.mvMatrix.elements);
-            this.gl.uniformMatrix4fv(this.shaderProgram.nMatrixUniform, false, this.nMatrix.elements);
+            this.gl.uniformMatrix4fv(this.shaderProgram.mvMatrixUniform, false, this.mvMatrix);
+            this.gl.uniformMatrix4fv(this.shaderProgram.nMatrixUniform, false, this.nMatrix);
         },
 
         setOrientation: function(azimuth, pitch, roll) {
@@ -376,19 +376,17 @@
             // Clear the canvas
             this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
-            //this.gl.colorMask(1, 1, 1, 0);
             // Make a model/view matrix.
-            this.mvMatrix.loadIdentity();
-            this.mvMatrix.translate(0.0, 0.0, -4.0);
-            this.mvMatrix.rotate(this.pitch - 90, 1, 0, 0);
-            this.mvMatrix.rotate( - this.roll, 0, 0, 1);
-            this.mvMatrix.rotate(this.azimuth - 180, 0, 1, 0);
-            this.mvMatrix.translate(0.0, 0.7, 0.0);
+            mat4.identity(this.mvMatrix);
+            mat4.translate(this.mvMatrix, [ 0, 0, -4 ]);
+            mat4.rotate(this.mvMatrix, this.pitch - HALF_PI, [ -1, 0, 0 ]);
+            mat4.rotate(this.mvMatrix, - this.roll, [ 0, 0, -1 ]);
+            mat4.rotate(this.mvMatrix, this.azimuth - Math.PI, [ 0, -1, 0 ]);
+            mat4.translate(this.mvMatrix, [ 0, 0.7, 0 ]);
 
             // Construct the normal matrix from the model-view matrix
-            this.nMatrix = this.mvMatrix.copy();
-            this.nMatrix.invert();
-            this.nMatrix.transpose();
+            mat4.inverse(this.mvMatrix, this.nMatrix);
+            mat4.transpose(this.nMatrix);
 
             this.setMatrixUniforms();
 
@@ -447,7 +445,7 @@
 
             for (var i = 0; i <= dx; i++) {
                 for (var j = 0; j <= rh; j++) {
-                    var a = i * (Math.PI * 2) / dx;
+                    var a = i * TWO_PI / dx;
                     var b = j * Math.PI / (dy * 2);
 
                     var x = Math.sin(a) * Math.cos(b);
@@ -532,7 +530,7 @@
             var n = 0;
             for (var i = 0; i <= dx; i++) {
                 for (var j = rh; j <= dy; j++) {
-                    var a = i * (Math.PI * 2) / dx;
+                    var a = i * TWO_PI / dx;
                     var b = j * Math.PI / (dy * 2);
 
                     var x = Math.sin(a) * Math.cos(b);
@@ -592,7 +590,7 @@
             normals[n + 2] = 0;
             n += 3;
             for (var i = 0; i <= dx; i++) {
-                var a = i * (Math.PI * 2) / dx;
+                var a = i * TWO_PI / dx;
 
                 var x = Math.sin(a);
                 var z = Math.cos(a);
@@ -612,7 +610,7 @@
             texCoords[n++] = 0.5;
             texCoords[n++] = 0.5;
             for (var i = 0; i <= dx; i++) {
-                var a = i * (Math.PI * 2) / dx;
+                var a = i * TWO_PI / dx;
 
                 var x = (Math.sin(a) + 1) / 2;
                 var z = (Math.cos(a) + 1) / 2;
@@ -793,7 +791,7 @@
             context.lineWidth = 4;
 
             context.beginPath();
-            context.arc(radius, radius, radius - 10, 0, Math.PI * 2);
+            context.arc(radius, radius, radius - 10, 0, TWO_PI);
             context.stroke();
             //context.fill();
             context.closePath();
@@ -803,7 +801,7 @@
             for (var i = 0; i < 4; i++) {
 
                 context.translate(radius, radius);
-                context.rotate(i * Math.PI / 2);
+                context.rotate(i * HALF_PI);
                 context.translate( - radius, -radius);
 
                 context.fillStyle = '#666';
@@ -863,7 +861,7 @@
             context.textAlign = 'center';
             for (var i = 0; i < 360; i += 30) {
                 if ((i % 90) != 0) {
-                    var a = -i * (Math.PI * 2) / 360;
+                    var a = -i * TWO_PI / 360;
                     var x = Math.sin(a) * 0.7 * radius + radius;
                     var y = Math.cos(a) * 0.7 * radius + radius;
 
@@ -883,7 +881,7 @@
             context.fillStyle = '#FF0000';
             context.textAlign = 'center';
             for (var i = 0; i < 360; i += 90) {
-                var a = i * (Math.PI * 2) / 360;
+                var a = i * TWO_PI / 360;
                 var x = Math.sin(a) * 0.65 * radius + radius;
                 var y = Math.cos(a) * 0.65 * radius + radius;
 
