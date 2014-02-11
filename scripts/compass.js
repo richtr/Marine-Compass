@@ -25,7 +25,7 @@
   * URLs:      http://www.pierrox.net/cmsms/applications/marine-compass.html
   */
 
- ! (function(window, undefined) {
+!(function(window, undefined) {
 
     var document = window.document;
 
@@ -104,7 +104,10 @@
         }
         catch(e) {}
 
-        if (!this.gl) return;
+        if (!this.gl) {
+          this.output('Unable to initialize WebGL. Your browser may not support it', 'http://get.webgl.org');
+          return;
+        }
 
         this.init();
 
@@ -199,10 +202,23 @@
 
         },
 
-        output: function(str) {
-            document.body.appendChild(document.createTextNode(str));
-            document.body.appendChild(document.createElement("br"));
-            console.error(str); // output to console also
+        output: function(str, link) {
+          // Display error to developer
+          console.error(str); 
+          
+          // Display error to user
+          var outputContainer = document.createElement('div');
+          outputContainer.setAttribute('class', 'output_err');
+          outputContainer.appendChild(document.createTextNode(str + ". "));
+
+          if(link) {
+            var output_link = document.createElement('a');
+            output_link.href = link;
+            output_link.textContent = link;
+            outputContainer.appendChild(output_link);
+          }
+          
+          document.body.appendChild(outputContainer);
         },
 
         checkGLError: function() {
