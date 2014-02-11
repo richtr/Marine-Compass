@@ -2,7 +2,7 @@
  * Marine Compass
  * http://github.com/richtr/Marine-Compass
  *
- * Copyright (c) 2012, Rich Tibbett
+ * Copyright (c) 2012-2014, Rich Tibbett
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,18 +35,20 @@
     function toDeg(val) {
         return val * 180 / Math.PI;
     }
+
+    function isPowerOf2(value) {
+      return (value & (value - 1)) == 0;
+    };
     
     var HALF_PI = Math.PI / 2,
         TWO_PI = Math.PI * 2;
 
     var compassVertexSource = [
-    "attribute vec3 aNormalPosition;",
     "attribute vec3 aVertexPosition;",
     "attribute vec2 aTextureCoord;",
     "",
     "uniform mat4 uMVMatrix;",
     "uniform mat4 uPMatrix;",
-    "uniform mat4 uNMatrix;",
     "",
     "varying mediump vec2 vTextureCoord;",
     "",
@@ -59,12 +61,13 @@
     var compassFragmentSource = [
     "precision mediump float;",
     "",
-    "varying mediump vec2 vTextureCoord;",
+    "varying vec2 vTextureCoord;",
     "",
     "uniform sampler2D uSampler;",
     "",
     "void main(void) {",
-    "  gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));",
+    "  vec4 textureColor = texture2D(uSampler, vTextureCoord);",
+    "  gl_FragColor = textureColor;",
     "}"
     ].join("\n");
     
@@ -148,7 +151,7 @@
                         self.canvasElement.style.Transform =
                           "rotate(" + ( -window.orientation ) + "deg)";
 
-              }, 70);
+              }, 200);
 
             }, true);
 
@@ -199,6 +202,7 @@
         output: function(str) {
             document.body.appendChild(document.createTextNode(str));
             document.body.appendChild(document.createElement("br"));
+            console.error(str); // output to console also
         },
 
         checkGLError: function() {
@@ -213,6 +217,11 @@
         calculateOrientation: function() {
 
             if (this.lastOrientEvent === null) return;
+            
+            // convert event inputs to radians
+            var alpha = toRad(this.lastOrientEvent.alpha);
+            var beta = toRad(this.lastOrientEvent.beta);
+            var gamma = toRad(this.lastOrientEvent.gamma);
 
             if (this.mNumAngles == this.RING_BUFFER_SIZE) {
                 // subtract oldest vector
@@ -225,11 +234,6 @@
             } else {
                 this.mNumAngles++;
             }
-
-            // convert event inputs to radians
-            var alpha = toRad(this.lastOrientEvent.alpha);
-            var beta = toRad(this.lastOrientEvent.beta);
-            var gamma = toRad(this.lastOrientEvent.gamma);
 
             // convert angles into x/y
             this.mAnglesRingBuffer[this.mRingBufferIndex][0][0] = Math.cos(alpha);
@@ -251,13 +255,13 @@
             if (this.mRingBufferIndex == this.RING_BUFFER_SIZE) {
                 this.mRingBufferIndex = 0;
             }
-
+            
             // convert back x/y into angles
-            var azimuth = Math.atan2(this.mAngles[0][1], this.mAngles[0][0]);
-            var pitch = Math.atan2(this.mAngles[1][1], this.mAngles[1][0]);
-            var roll = Math.atan2(this.mAngles[2][1], this.mAngles[2][0]);
+            var smoothAlpha = Math.atan2(this.mAngles[0][1], this.mAngles[0][0]);
+            var smoothBeta = Math.atan2(this.mAngles[1][1], this.mAngles[1][0]);
+            var smoothGamma = Math.atan2(this.mAngles[2][1], this.mAngles[2][0]);
 
-            this.mCompassRenderer.setOrientation(azimuth, pitch, roll);
+            this.mCompassRenderer.setOrientation(smoothAlpha, smoothBeta, smoothGamma);
 
         },
 
@@ -284,7 +288,6 @@
 
         this.pMatrix = mat4.create();
         this.mvMatrix = mat4.create();
-        this.nMatrix = mat4.create();
 
         this.init();
 
@@ -305,7 +308,7 @@
             if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS) &&
             !this.gl.isContextLost()) {
                 var infoLog = this.gl.getShaderInfoLog(shader);
-                console.error("Error compiling shader:\n" + infoLog);
+                this.compass.output("Error compiling shader:\n" + infoLog);
                 this.gl.deleteShader(shader);
                 return null;
             }
@@ -321,19 +324,9 @@
             this.shaderProgram = this.gl.createProgram();
             this.gl.attachShader(this.shaderProgram, vertexShader);
             this.gl.attachShader(this.shaderProgram, fragmentShader);
-
-            this.gl.bindAttribLocation(this.shaderProgram, 0, "aNormal");
-            this.gl.bindAttribLocation(this.shaderProgram, 1, "aTextureCoord");
-            this.gl.bindAttribLocation(this.shaderProgram, 2, "aVertexPosition");
-
-            this.gl.enableVertexAttribArray(0);
-            // NORMAL
-            this.gl.enableVertexAttribArray(1);
-            // TEXCOORD
-            this.gl.enableVertexAttribArray(2);
-            // VERTEX
+            
             this.gl.linkProgram(this.shaderProgram);
-
+            
             // Check the link status
             var linked = this.gl.getProgramParameter(this.shaderProgram, this.gl.LINK_STATUS);
             if (!linked && !this.gl.isContextLost()) {
@@ -345,12 +338,16 @@
 
             this.gl.useProgram(this.shaderProgram);
 
+            this.gl.textureCoordAttribute = this.gl.getAttribLocation(this.shaderProgram, "aTextureCoord");
+            this.gl.vertexPositionAttribute = this.gl.getAttribLocation(this.shaderProgram, "aVertexPosition");
+
+            this.gl.enableVertexAttribArray(this.gl.textureCoordAttribute);
+            this.gl.enableVertexAttribArray(this.gl.vertexPositionAttribute);
+
             this.gl.enable(this.gl.DEPTH_TEST);
 
             // Set some uniform variables for the shaders
             this.shaderProgram.mvMatrixUniform = this.gl.getUniformLocation(this.shaderProgram, "uMVMatrix");
-            this.shaderProgram.nMatrixUniform = this.gl.getUniformLocation(this.shaderProgram, "uNMatrix");
-
             this.shaderProgram.shaderUniform = this.gl.getUniformLocation(this.shaderProgram, "uSampler");
 
             // Calculate perspective
@@ -362,13 +359,12 @@
 
         setMatrixUniforms: function() {
             this.gl.uniformMatrix4fv(this.shaderProgram.mvMatrixUniform, false, this.mvMatrix);
-            this.gl.uniformMatrix4fv(this.shaderProgram.nMatrixUniform, false, this.nMatrix);
         },
 
-        setOrientation: function(azimuth, pitch, roll) {
-            this.azimuth = azimuth;
-            this.pitch = pitch;
-            this.roll = roll;
+        setOrientation: function(alpha, beta, gamma) {
+            this.alpha = alpha;
+            this.beta = beta;
+            this.gamma = gamma;
         },
 
         draw: function() {
@@ -379,14 +375,10 @@
             // Make a model/view matrix.
             mat4.identity(this.mvMatrix);
             mat4.translate(this.mvMatrix, [ 0, 0, -4 ]);
-            mat4.rotate(this.mvMatrix, this.pitch - HALF_PI, [ -1, 0, 0 ]);
-            mat4.rotate(this.mvMatrix, - this.roll, [ 0, 0, -1 ]);
-            mat4.rotate(this.mvMatrix, this.azimuth - Math.PI, [ 0, -1, 0 ]);
-            mat4.translate(this.mvMatrix, [ 0, 0.7, 0 ]);
-
-            // Construct the normal matrix from the model-view matrix
-            mat4.inverse(this.mvMatrix, this.nMatrix);
-            mat4.transpose(this.nMatrix);
+            mat4.rotate(this.mvMatrix, this.beta - HALF_PI, [ -1, 0, 0 ]);
+            mat4.rotate(this.mvMatrix, - this.gamma, [ 0, 0, -1 ]);
+            mat4.rotate(this.mvMatrix, this.alpha - Math.PI, [ 0, -1, 0 ]);
+            //mat4.translate(this.mvMatrix, [ 0, 0.7, 0 ]);
 
             this.setMatrixUniforms();
 
@@ -656,7 +648,15 @@
 
             this.mTextures[this.TEXTURE_RING] = this.gl.createTexture();
             this.mTextures[this.TEXTURE_DIAL] = this.gl.createTexture();
-
+            
+            // Initialize textures with empty 1x1 texture while real textures are loaded
+            // see: http://stackoverflow.com/a/19748905
+            for(var i = 0, l = this.mTextures.length; i < l; i++) {
+              this.gl.bindTexture(this.gl.TEXTURE_2D, this.mTextures[i]);
+              this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 1, 1, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, 
+                new Uint8Array([0, 0, 0, 255])); // initialize as black 1x1 texture
+            }
+            
             this.buildRingTexture();
             this.buildDialTexture();
 
@@ -750,20 +750,24 @@
             var image = document.createElement('img');
             var self = this;
             image.onload = function() {
-                //self.gl.activeTexture(self.gl.TEXTURE0);
+              
                 self.gl.bindTexture(self.gl.TEXTURE_2D, self.mTextures[self.TEXTURE_RING]);
 
-                self.gl.pixelStorei(self.gl.UNPACK_ALIGNMENT, 1);
-
-                //self.gl.uniform1i(self.compassrenderer.shaderProgram.shaderUniform, 0);
                 self.gl.texImage2D(self.gl.TEXTURE_2D, 0, self.gl.RGBA, self.gl.RGBA, self.gl.UNSIGNED_BYTE, image);
-
-                self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_MAG_FILTER, self.gl.LINEAR);
-                self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_MIN_FILTER, self.gl.LINEAR);
-                self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_WRAP_S, self.gl.CLAMP_TO_EDGE);
-                self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_WRAP_T, self.gl.CLAMP_TO_EDGE);
-
-                self.gl.bindTexture(self.gl.TEXTURE_2D, null);
+                
+                // see: http://stackoverflow.com/a/19748905
+                if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+                  // the dimensions are power of 2 so generate mips and turn on 
+                  // tri-linear filtering.
+                  self.gl.generateMipmap(self.gl.TEXTURE_2D);
+                  self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_MIN_FILTER, self.gl.LINEAR_MIPMAP_LINEAR);
+                } else {
+                  // at least one of the dimensions is not a power of 2 so set the filtering
+                  // so WebGL will render it.
+                  self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_WRAP_S, self.gl.CLAMP_TO_EDGE);
+                  self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_WRAP_T, self.gl.CLAMP_TO_EDGE);
+                  self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_MIN_FILTER, self.gl.LINEAR);
+                }
 
                 self.compassrenderer.compass.checkGLError();
 
@@ -900,22 +904,25 @@
             var self = this;
             image.onload = function() {
 
-                //self.gl.activeTexture(self.gl.TEXTURE1);
-                self.gl.bindTexture(self.gl.TEXTURE_2D, self.mTextures[self.TEXTURE_DIAL]);
+              self.gl.bindTexture(self.gl.TEXTURE_2D, self.mTextures[self.TEXTURE_DIAL]);
 
-                self.gl.pixelStorei(self.gl.UNPACK_ALIGNMENT, 1);
-
-                //self.gl.uniform1i(self.compassrenderer.shaderProgram.shaderUniform, 1);
-                self.gl.texImage2D(self.gl.TEXTURE_2D, 0, self.gl.RGBA, self.gl.RGBA, self.gl.UNSIGNED_BYTE, image);
-
-                self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_MAG_FILTER, self.gl.LINEAR);
-                self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_MIN_FILTER, self.gl.LINEAR);
+              self.gl.texImage2D(self.gl.TEXTURE_2D, 0, self.gl.RGBA, self.gl.RGBA, self.gl.UNSIGNED_BYTE, image);
+              
+              // see: http://stackoverflow.com/a/19748905
+              if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+                // the dimensions are power of 2 so generate mips and turn on 
+                // tri-linear filtering.
+                self.gl.generateMipmap(self.gl.TEXTURE_2D);
+                self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_MIN_FILTER, self.gl.LINEAR_MIPMAP_LINEAR);
+              } else {
+                // at least one of the dimensions is not a power of 2 so set the filtering
+                // so WebGL will render it.
                 self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_WRAP_S, self.gl.CLAMP_TO_EDGE);
                 self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_WRAP_T, self.gl.CLAMP_TO_EDGE);
+                self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_MIN_FILTER, self.gl.LINEAR);
+              }
 
-                self.gl.bindTexture(self.gl.TEXTURE_2D, null);
-
-                self.compassrenderer.compass.checkGLError();
+              self.compassrenderer.compass.checkGLError();
 
             };
             image.src = canvas.toDataURL();
@@ -937,19 +944,16 @@
             var dy = this.DETAIL_Y[this.mDetailsLevel];
             var rh = this.RING_HEIGHT[this.mDetailsLevel];
 
-            this.gl.enableVertexAttribArray(0);
-            this.gl.enableVertexAttribArray(1);
-
+            // Enable texture for the ring and dial objects
+            this.gl.enableVertexAttribArray(this.gl.textureCoordAttribute);
+            
             // Draw Ring Object
             this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.mRingVertexBufferGL);
-            this.gl.vertexAttribPointer(2, this.mRingVertexBufferGL.itemSize, this.gl.FLOAT, false, 0, 0);
-
-            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.mRingNormalBufferGL);
-            this.gl.vertexAttribPointer(0, this.mRingNormalBufferGL.itemSize, this.gl.FLOAT, false, 0, 0);
+            this.gl.vertexAttribPointer(this.gl.vertexPositionAttribute, this.mRingVertexBufferGL.itemSize, this.gl.FLOAT, false, 0, 0);
 
             this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.mRingTexCoordBufferGL);
-            this.gl.vertexAttribPointer(1, this.mRingTexCoordBufferGL.itemSize, this.gl.FLOAT, false, 0, 0);
-
+            this.gl.vertexAttribPointer(this.gl.textureCoordAttribute, this.mRingTexCoordBufferGL.itemSize, this.gl.FLOAT, false, 0, 0);
+            
             //this.gl.activeTexture(this.gl.TEXTURE0);
             this.gl.bindTexture(this.gl.TEXTURE_2D, this.mTextures[this.TEXTURE_RING]);
             //this.gl.uniform1i(this.compassrenderer.shaderProgram.shaderUniform, 0);
@@ -959,13 +963,10 @@
 
             // Draw Dial Object
             this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.mDialVertexBufferGL);
-            this.gl.vertexAttribPointer(2, this.mDialVertexBufferGL.itemSize, this.gl.FLOAT, false, 0, 0);
-
-            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.mDialNormalBufferGL);
-            this.gl.vertexAttribPointer(0, this.mDialNormalBufferGL.itemSize, this.gl.FLOAT, false, 0, 0);
+            this.gl.vertexAttribPointer(this.gl.vertexPositionAttribute, this.mDialVertexBufferGL.itemSize, this.gl.FLOAT, false, 0, 0);
 
             this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.mDialTexCoordBufferGL);
-            this.gl.vertexAttribPointer(1, this.mDialTexCoordBufferGL.itemSize, this.gl.FLOAT, false, 0, 0);
+            this.gl.vertexAttribPointer(this.gl.textureCoordAttribute, this.mDialTexCoordBufferGL.itemSize, this.gl.FLOAT, false, 0, 0);
 
             //this.gl.activeTexture(this.gl.TEXTURE1);
             this.gl.bindTexture(this.gl.TEXTURE_2D, this.mTextures[this.TEXTURE_DIAL]);
@@ -974,16 +975,14 @@
 
             this.gl.drawElements(this.gl.TRIANGLE_FAN, dx + 2, this.gl.UNSIGNED_SHORT, 0);
 
+            // Disable texture for cap object
+            this.gl.disableVertexAttribArray(this.gl.textureCoordAttribute);
+
             // Draw Cap Object
             this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.mCapVertexBufferGL);
-            this.gl.vertexAttribPointer(2, this.mCapVertexBufferGL.itemSize, this.gl.FLOAT, false, 0, 0);
-
-            this.gl.disableVertexAttribArray(0);
-            this.gl.disableVertexAttribArray(1);
+            this.gl.vertexAttribPointer(this.gl.vertexPositionAttribute, this.mCapVertexBufferGL.itemSize, this.gl.FLOAT, false, 0, 0);
 
             this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.mCapIndexBufferGL);
-
-            this.gl.bindTexture(this.gl.TEXTURE_2D, null);
 
             this.gl.drawElements(this.gl.TRIANGLES, dx * (dy - rh) * 6, this.gl.UNSIGNED_SHORT, 0);
 
