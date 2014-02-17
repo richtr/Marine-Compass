@@ -86,7 +86,7 @@
     };
 
     // +++ COMPASS +++
-    window.Compass = function(canvasElement) {
+    window.Compass = function(canvasElement, headingElement) {
 
         if (!canvasElement) {
             canvasElement = document.createElement('canvas');
@@ -96,6 +96,7 @@
         }
 
         this.canvasElement = canvasElement;
+        this.headingElement = headingElement || document.createElement('div');
 
         try {
             this.gl = create3DContext(canvasElement);
@@ -225,7 +226,8 @@
                 self.lastOrientEvent = {
                     alpha: oEvent.alpha || 0,
                     beta: oEvent.beta || 0,
-                    gamma: oEvent.gamma || 0
+                    gamma: oEvent.gamma || 0,
+                    absolute: oEvent.absolute || false
                 };
 
             },
@@ -287,20 +289,20 @@
             }
 
             // convert angles into x/y
-            this.mAnglesRingBuffer[this.mRingBufferIndex][0][0] = Math.cos(alpha);
-            this.mAnglesRingBuffer[this.mRingBufferIndex][0][1] = Math.sin(alpha);
-            this.mAnglesRingBuffer[this.mRingBufferIndex][1][0] = Math.cos(beta);
-            this.mAnglesRingBuffer[this.mRingBufferIndex][1][1] = Math.sin(beta);
-            this.mAnglesRingBuffer[this.mRingBufferIndex][2][0] = Math.cos(gamma);
-            this.mAnglesRingBuffer[this.mRingBufferIndex][2][1] = Math.sin(gamma);
+            var cA = this.mAnglesRingBuffer[this.mRingBufferIndex][0][0] = Math.cos(alpha);
+            var sA = this.mAnglesRingBuffer[this.mRingBufferIndex][0][1] = Math.sin(alpha);
+            var cB = this.mAnglesRingBuffer[this.mRingBufferIndex][1][0] = Math.cos(beta);
+            var sB = this.mAnglesRingBuffer[this.mRingBufferIndex][1][1] = Math.sin(beta);
+            var cG = this.mAnglesRingBuffer[this.mRingBufferIndex][2][0] = Math.cos(gamma);
+            var sG = this.mAnglesRingBuffer[this.mRingBufferIndex][2][1] = Math.sin(gamma);
 
             // accumulate new x/y vector
-            this.mAngles[0][0] += this.mAnglesRingBuffer[this.mRingBufferIndex][0][0];
-            this.mAngles[0][1] += this.mAnglesRingBuffer[this.mRingBufferIndex][0][1];
-            this.mAngles[1][0] += this.mAnglesRingBuffer[this.mRingBufferIndex][1][0];
-            this.mAngles[1][1] += this.mAnglesRingBuffer[this.mRingBufferIndex][1][1];
-            this.mAngles[2][0] += this.mAnglesRingBuffer[this.mRingBufferIndex][2][0];
-            this.mAngles[2][1] += this.mAnglesRingBuffer[this.mRingBufferIndex][2][1];
+            this.mAngles[0][0] += cA;
+            this.mAngles[0][1] += sA;
+            this.mAngles[1][0] += cB;
+            this.mAngles[1][1] += sB;
+            this.mAngles[2][0] += cG;
+            this.mAngles[2][1] += sG;
 
             this.mRingBufferIndex++;
             if (this.mRingBufferIndex == this.RING_BUFFER_SIZE) {
@@ -312,7 +314,20 @@
             var smoothBeta = Math.atan2(this.mAngles[1][1], this.mAngles[1][0]);
             var smoothGamma = Math.atan2(this.mAngles[2][1], this.mAngles[2][0]);
 
-            this.mCompassRenderer.setOrientation(smoothAlpha, smoothBeta, smoothGamma);
+            // calculate compass heading pointing out of the back of the screen
+            // see: http://w3c.github.io/deviceorientation/spec-source-orientation.html#worked-example
+            var compassHeading = 0;
+            if(this.lastOrientEvent.absolute === true && this.lastOrientEvent.alpha !== null) {
+              var rA = - cA * sG - sA * sB * cG;
+              var rB = - sA * sG + cA * sB * cG;
+              compassHeading = Math.atan2(rA, rB);
+              if(rA < 0) {
+                compassHeading += 2 * Math.PI;
+              }
+              compassHeading *= 180 / Math.PI;
+            }
+
+            this.mCompassRenderer.setOrientation(smoothAlpha, smoothBeta, smoothGamma, compassHeading);
 
         },
 
@@ -367,7 +382,7 @@
         },
 
         init: function() {
-            this.setOrientation(0, Math.PI / 3, 0);
+            this.setOrientation(0, Math.PI / 3, 0, 0);
             // initialize
             var vertexShader = this.loadShader(this.gl.VERTEX_SHADER, compassVertexSource);
             var fragmentShader = this.loadShader(this.gl.FRAGMENT_SHADER, compassFragmentSource);
@@ -412,11 +427,14 @@
             this.gl.uniformMatrix4fv(this.shaderProgram.mvMatrixUniform, false, this.mvMatrix);
         },
 
-        setOrientation: function(alpha, beta, gamma) {
+        setOrientation: function(alpha, beta, gamma, heading) {
             this.alpha = alpha;
             this.beta = beta;
             this.gamma = gamma;
+            this.heading = heading;
         },
+
+        lastCompassHeading: 0,
 
         draw: function() {
 
@@ -432,6 +450,13 @@
             //mat4.translate(this.mvMatrix, [ 0, 0.7, 0 ]);
 
             this.setMatrixUniforms();
+
+            // Display compass heading
+            var thisCompassHeading = Math.round(this.heading);
+            if(this.lastCompassHeading !== thisCompassHeading) {
+              this.compass.headingElement.textContent = thisCompassHeading;
+              this.lastCompassHeading = thisCompassHeading;
+            }
 
             // ***
             this.mTurntable.draw();

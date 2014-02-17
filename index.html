@@ -19,6 +19,7 @@
     overflow: hidden;
     background: transparent url(./images/bg.jpg) no-repeat scroll 50%;
     background-size: 100% 100%;
+    font-family: Arial, Helvetica, sans-serif;
   }
   #glCanvas {
     position: absolute;
@@ -33,6 +34,16 @@
     margin: 20px 10px;
     padding: 20px;
   }
+  .heading {
+    display: block;
+    text-align: center;
+    padding: 10px 0 0;
+    height: 40px;
+    color: #fff;
+    font-size: 1.8em;
+    font-weight: bold;
+  }
+
 </style>
 
 <!-- COMPASS -->
@@ -71,7 +82,9 @@ window.addEventListener('load', function() {
   canvasElement.setAttribute('width', window.innerWidth);
   canvasElement.setAttribute('height', window.innerHeight);
 
-  new Compass( canvasElement );
+  var headingElement = document.getElementById('headingReading');
+
+  new Compass( canvasElement, headingElement );
 
 }, true);
 
@@ -79,6 +92,7 @@ window.addEventListener('load', function() {
 </head>
 
 <body>
+  <div class="heading">Heading: <span id="headingReading">-</span>&deg;</div>
   <canvas id="glCanvas" width="320" height="240"></canvas>
 </body>
 
