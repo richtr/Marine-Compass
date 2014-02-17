@@ -452,7 +452,7 @@
             this.setMatrixUniforms();
 
             // Display compass heading
-            var thisCompassHeading = Math.round(this.heading);
+            var thisCompassHeading = Math.floor(this.heading);
             if(this.lastCompassHeading !== thisCompassHeading) {
               this.compass.headingElement.textContent = thisCompassHeading;
               this.lastCompassHeading = thisCompassHeading;
