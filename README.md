@@ -24,8 +24,7 @@ The Marine Compass is known to work (as of 12th February 2014) in the latest ver
 
 * Google Chrome for Android
 * Opera for Android
-* Opera Mobile 12.1 for Android
-* Firefox *Beta* for Android
+* Firefox for Android
 
 You can point one of the browsers above to the online demo available @ [http://people.opera.com/richt/release/demos/orientation/marinecompass](http://people.opera.com/richt/release/demos/orientation/marinecompass).
 
