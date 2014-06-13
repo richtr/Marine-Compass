@@ -159,6 +159,32 @@
 
             var self = this;
 
+            // Create rotation matrix object (calculated per canvas draw)
+            this.rotationMatrix = mat4.create();
+            mat4.identity(this.rotationMatrix);
+
+            // Create screen transform matrix (calculated once)
+            this.screenMatrix = mat4.create();
+            mat4.identity(this.screenMatrix);
+
+            var inv = toRad(180);
+
+            this.screenMatrix[0] =   Math.cos( inv );
+            this.screenMatrix[1] =   Math.sin( inv );
+            this.screenMatrix[4] = - Math.sin( inv );
+            this.screenMatrix[5] =   Math.cos( inv );
+
+            // Create world transformation matrix (calculated once)
+            this.worldMatrix = mat4.create();
+            mat4.identity(this.worldMatrix);
+
+            var up = toRad(90);
+
+            this.worldMatrix[5]  =   Math.cos( up );
+            this.worldMatrix[6]  =   Math.sin( up );
+            this.worldMatrix[9]  = - Math.sin( up );
+            this.worldMatrix[10] =   Math.cos( up );
+
             // CompassRenderer manages 3D objects and gl surface life cycle
             this.mCompassRenderer = new CompassRenderer(this);
 
@@ -193,27 +219,6 @@
               }, 200);
 
             }, true);
-
-            function createRingMAngles() {
-                var _mAngles = new Array(3);
-                for (var i = 0, l = _mAngles.length; i < l; i++) {
-                    _mAngles[i] = new Array(2);
-                    for (var j = 0, m = _mAngles[i].length; j < m; j++) {
-                        _mAngles[i][j] = 0;
-                    }
-                }
-                return _mAngles;
-            }
-
-            // Initialize a ring buffer for the orientation values
-            this.RING_BUFFER_SIZE = 10;
-            this.mNumAngles = 0;
-            this.mRingBufferIndex = 0;
-            this.mAnglesRingBuffer = new Array(this.RING_BUFFER_SIZE);
-            for (var i = 0, l = this.mAnglesRingBuffer.length; i < l; i++) {
-                this.mAnglesRingBuffer[i] = createRingMAngles();
-            }
-            this.mAngles = createRingMAngles();
 
             this.lastOrientEvent = null;
 
@@ -267,74 +272,63 @@
             }
         },
 
-        calculateOrientation: function() {
-
+    	calculateRotationMatrix: function() {
             if (this.lastOrientEvent === null) return;
 
             // convert event inputs to radians
-            var alpha = toRad(this.lastOrientEvent.alpha);
-            var beta = toRad(this.lastOrientEvent.beta);
-            var gamma = toRad(this.lastOrientEvent.gamma);
+            var _x = this.lastOrientEvent.beta  ? toRad(this.lastOrientEvent.beta)  : 0; // beta value
+            var _y = this.lastOrientEvent.gamma ? toRad(this.lastOrientEvent.gamma) : 0; // gamma value
+            var _z = this.lastOrientEvent.alpha ? toRad(this.lastOrientEvent.alpha) : 0; // alpha value
 
-            if (this.mNumAngles == this.RING_BUFFER_SIZE) {
-                // subtract oldest vector
-                this.mAngles[0][0] -= this.mAnglesRingBuffer[this.mRingBufferIndex][0][0];
-                this.mAngles[0][1] -= this.mAnglesRingBuffer[this.mRingBufferIndex][0][1];
-                this.mAngles[1][0] -= this.mAnglesRingBuffer[this.mRingBufferIndex][1][0];
-                this.mAngles[1][1] -= this.mAnglesRingBuffer[this.mRingBufferIndex][1][1];
-                this.mAngles[2][0] -= this.mAnglesRingBuffer[this.mRingBufferIndex][2][0];
-                this.mAngles[2][1] -= this.mAnglesRingBuffer[this.mRingBufferIndex][2][1];
-            } else {
-                this.mNumAngles++;
-            }
+            var cX = Math.cos( _x );
+            var cY = Math.cos( _y );
+            var cZ = Math.cos( _z );
+            var sX = Math.sin( _x );
+            var sY = Math.sin( _y );
+            var sZ = Math.sin( _z );
 
-            // convert angles into x/y
-            var cA = this.mAnglesRingBuffer[this.mRingBufferIndex][0][0] = Math.cos(alpha);
-            var sA = this.mAnglesRingBuffer[this.mRingBufferIndex][0][1] = Math.sin(alpha);
-            var cB = this.mAnglesRingBuffer[this.mRingBufferIndex][1][0] = Math.cos(beta);
-            var sB = this.mAnglesRingBuffer[this.mRingBufferIndex][1][1] = Math.sin(beta);
-            var cG = this.mAnglesRingBuffer[this.mRingBufferIndex][2][0] = Math.cos(gamma);
-            var sG = this.mAnglesRingBuffer[this.mRingBufferIndex][2][1] = Math.sin(gamma);
+            //
+            // ZXY-ordered device rotation matrix construction.
+            //
+            this.rotationMatrix[0] = cZ * cY - sZ * sX * sY;
+            this.rotationMatrix[1] = - cX * sZ;
+            this.rotationMatrix[2] = cY * sZ * sX + cZ * sY;
 
-            // accumulate new x/y vector
-            this.mAngles[0][0] += cA;
-            this.mAngles[0][1] += sA;
-            this.mAngles[1][0] += cB;
-            this.mAngles[1][1] += sB;
-            this.mAngles[2][0] += cG;
-            this.mAngles[2][1] += sG;
+            this.rotationMatrix[4] = cY * sZ + cZ * sX * sY;
+            this.rotationMatrix[5] = cZ * cX;
+            this.rotationMatrix[6] = sZ * sY - cZ * cY * sX;
 
-            this.mRingBufferIndex++;
-            if (this.mRingBufferIndex == this.RING_BUFFER_SIZE) {
-                this.mRingBufferIndex = 0;
-            }
+            this.rotationMatrix[8] = - cX * sY;
+            this.rotationMatrix[9] = sX;
+            this.rotationMatrix[10] = cX * cY;
 
-            // convert back x/y into angles
-            var smoothAlpha = Math.atan2(this.mAngles[0][1], this.mAngles[0][0]);
-            var smoothBeta = Math.atan2(this.mAngles[1][1], this.mAngles[1][0]);
-            var smoothGamma = Math.atan2(this.mAngles[2][1], this.mAngles[2][0]);
+            // Invert compass heading
+            mat4.multiply(this.rotationMatrix, this.screenMatrix);
+
+            // Apply world orientation (heads-up display)
+            mat4.multiply(this.rotationMatrix, this.worldMatrix);
+
+            this.mCompassRenderer.setRotationMatrix(this.rotationMatrix);
 
             // calculate compass heading pointing out of the back of the screen
             // see: http://w3c.github.io/deviceorientation/spec-source-orientation.html#worked-example
             var compassHeading = 0;
             if(this.lastOrientEvent.absolute === true && this.lastOrientEvent.alpha !== null) {
-              var rA = - cA * sG - sA * sB * cG;
-              var rB = - sA * sG + cA * sB * cG;
+              var rA = - cZ * sY - sZ * sX * cY;
+              var rB = - sZ * sY + cZ * sX * cY;
               compassHeading = Math.atan2(rA, rB);
               if(rA < 0) {
                 compassHeading += 2 * Math.PI;
               }
-              compassHeading *= 180 / Math.PI;
             }
 
-            this.mCompassRenderer.setOrientation(smoothAlpha, smoothBeta, smoothGamma, compassHeading);
-
-        },
+            this.mCompassRenderer.setCompassHeading( toDeg(compassHeading) );
+    	},
 
         render: function() {
 
             // Update orientation buffer
-            this.calculateOrientation();
+            this.calculateRotationMatrix();
 
             // Draw frame
             this.mCompassRenderer.draw();
@@ -354,6 +348,9 @@
 
         this.pMatrix = mat4.create();
         this.mvMatrix = mat4.create();
+        this.rotationMatrix = mat4.create();
+
+        this.heading = 0;
 
         this.init();
 
@@ -382,7 +379,6 @@
         },
 
         init: function() {
-            this.setOrientation(0, Math.PI / 3, 0, 0);
             // initialize
             var vertexShader = this.loadShader(this.gl.VERTEX_SHADER, compassVertexSource);
             var fragmentShader = this.loadShader(this.gl.FRAGMENT_SHADER, compassFragmentSource);
@@ -427,27 +423,26 @@
             this.gl.uniformMatrix4fv(this.shaderProgram.mvMatrixUniform, false, this.mvMatrix);
         },
 
-        setOrientation: function(alpha, beta, gamma, heading) {
-            this.alpha = alpha;
-            this.beta = beta;
-            this.gamma = gamma;
+        setRotationMatrix: function(matrix) {
+            this.rotationMatrix = matrix;
+        },
+
+        setCompassHeading: function(heading) {
             this.heading = heading;
         },
 
         lastCompassHeading: 0,
 
         draw: function() {
-
             // Clear the canvas
             this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
-            // Make a model/view matrix.
+            // Reset move matrix
             mat4.identity(this.mvMatrix);
             mat4.translate(this.mvMatrix, [ 0, 0, -4 ]);
-            mat4.rotate(this.mvMatrix, this.beta - HALF_PI, [ -1, 0, 0 ]);
-            mat4.rotate(this.mvMatrix, - this.gamma, [ 0, 0, -1 ]);
-            mat4.rotate(this.mvMatrix, this.alpha - Math.PI, [ 0, -1, 0 ]);
-            //mat4.translate(this.mvMatrix, [ 0, 0.7, 0 ]);
+
+            // Apply calculated device rotation matrix
+            mat4.multiply(this.mvMatrix, this.rotationMatrix);
 
             this.setMatrixUniforms();
 
@@ -460,7 +455,6 @@
 
             // ***
             this.mTurntable.draw();
-
         }
 
     };
