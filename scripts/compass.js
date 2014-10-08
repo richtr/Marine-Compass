@@ -159,6 +159,9 @@
 
             var self = this;
 
+            // Set up *compass* deviceorientation data capture via Full Tilt JS
+            this.orientationData = new FULLTILT.DeviceOrientation({ 'type': 'world' });
+
             // Create rotation matrix object (calculated per canvas draw)
             this.rotationMatrix = mat4.create();
             mat4.identity(this.rotationMatrix);
@@ -208,39 +211,16 @@
                 false, self.mCompassRenderer.pMatrix
                 );
 
-                // Rotate the canvas to compensate for screen orientation change
-                self.canvasElement.style.MozTransform =
-                  self.canvasElement.style.MsTransform =
-                    self.canvasElement.style.WebkitTransform =
-                      self.canvasElement.style.OTransform =
-                        self.canvasElement.style.Transform =
-                          "rotate(" + ( -window.orientation ) + "deg)";
-
               }, 200);
 
             }, true);
 
-            this.lastOrientEvent = null;
-
-            // Start orientation listener
-            window.addEventListener('deviceorientation',
-            function(oEvent) {
-
-                // Simply store event result and we'll read from it at the
-                // next request animation frame.
-                self.lastOrientEvent = {
-                    alpha: oEvent.alpha || 0,
-                    beta: oEvent.beta || 0,
-                    gamma: oEvent.gamma || 0,
-                    absolute: oEvent.absolute || false
-                };
-
-            },
-            true);
-
             this.gl.clearDepth(500);
 
             this.gl.viewport(0, 0, this.gl.viewportWidth, this.gl.viewportHeight);
+
+            // Start Full Tilt JS deviceorientation data collection
+            this.orientationData.start();
 
         },
 
@@ -273,34 +253,20 @@
         },
 
     	calculateRotationMatrix: function() {
-            if (this.lastOrientEvent === null) return;
 
-            // convert event inputs to radians
-            var _x = this.lastOrientEvent.beta  ? toRad(this.lastOrientEvent.beta)  : 0; // beta value
-            var _y = this.lastOrientEvent.gamma ? toRad(this.lastOrientEvent.gamma) : 0; // gamma value
-            var _z = this.lastOrientEvent.alpha ? toRad(this.lastOrientEvent.alpha) : 0; // alpha value
+            // Pull the latest deviceorientation rotation matrix from Full Tilt JS
+            var orientationMatrix = this.orientationData.getScreenAdjustedMatrix();
 
-            var cX = Math.cos( _x );
-            var cY = Math.cos( _y );
-            var cZ = Math.cos( _z );
-            var sX = Math.sin( _x );
-            var sY = Math.sin( _y );
-            var sZ = Math.sin( _z );
-
-            //
-            // ZXY-ordered device rotation matrix construction.
-            //
-            this.rotationMatrix[0] = cZ * cY - sZ * sX * sY;
-            this.rotationMatrix[1] = - cX * sZ;
-            this.rotationMatrix[2] = cY * sZ * sX + cZ * sY;
-
-            this.rotationMatrix[4] = cY * sZ + cZ * sX * sY;
-            this.rotationMatrix[5] = cZ * cX;
-            this.rotationMatrix[6] = sZ * sY - cZ * cY * sX;
-
-            this.rotationMatrix[8] = - cX * sY;
-            this.rotationMatrix[9] = sX;
-            this.rotationMatrix[10] = cX * cY;
+            // Copy 3x3 FULLTILT.RotationMatrix values to 4x4 gl-matrix mat4
+            this.rotationMatrix[0] = orientationMatrix.elements[0];
+            this.rotationMatrix[1] = orientationMatrix.elements[1];
+            this.rotationMatrix[2] = orientationMatrix.elements[2];
+            this.rotationMatrix[4] = orientationMatrix.elements[3];
+            this.rotationMatrix[5] = orientationMatrix.elements[4];
+            this.rotationMatrix[6] = orientationMatrix.elements[5];
+            this.rotationMatrix[8] = orientationMatrix.elements[6];
+            this.rotationMatrix[9] = orientationMatrix.elements[7];
+            this.rotationMatrix[10] = orientationMatrix.elements[8];
 
             // Invert compass heading
             mat4.multiply(this.rotationMatrix, this.screenMatrix);
@@ -311,18 +277,14 @@
             this.mCompassRenderer.setRotationMatrix(this.rotationMatrix);
 
             // calculate compass heading pointing out of the back of the screen
-            // see: http://w3c.github.io/deviceorientation/spec-source-orientation.html#worked-example
-            var compassHeading = 0;
-            if(this.lastOrientEvent.absolute === true && this.lastOrientEvent.alpha !== null) {
-              var rA = - cZ * sY - sZ * sX * cY;
-              var rB = - sZ * sY + cZ * sX * cY;
-              compassHeading = Math.atan2(rA, rB);
-              if(rA < 0) {
-                compassHeading += 2 * Math.PI;
-              }
-            }
+            var euler = new FULLTILT.Euler();
+            euler.setFromRotationMatrix(orientationMatrix);
 
-            this.mCompassRenderer.setCompassHeading( toDeg(compassHeading) );
+            // Undo beta then gamma rotation to leave us with the base alpha rotation
+            euler.rotateY(toRad(-euler.gamma));
+            euler.rotateX(toRad(-euler.beta));
+
+            this.mCompassRenderer.setCompassHeading( 360 - euler.alpha );
     	},
 
         render: function() {

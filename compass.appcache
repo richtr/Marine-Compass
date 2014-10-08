@@ -1,5 +1,5 @@
 CACHE MANIFEST
-# 2014-06-13:v0.87
+# 2014-10-08:v0.9
 
 CACHE:
 
@@ -8,6 +8,7 @@ index.html
 scripts/requestAnimationFrame.js
 scripts/orientationChange.js
 scripts/gl-matrix.min.js
+scripts/fulltilt.min.js
 scripts/compass.js
 images/bg.jpg
 
