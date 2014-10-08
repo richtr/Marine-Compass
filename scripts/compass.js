@@ -276,15 +276,21 @@
 
             this.mCompassRenderer.setRotationMatrix(this.rotationMatrix);
 
-            // calculate compass heading pointing out of the back of the screen
-            var euler = new FULLTILT.Euler();
-            euler.setFromRotationMatrix(orientationMatrix);
+            // only show the heading if alpha !== null in used raw data
+            var rawOrientationData = this.orientationData.getLastRawEventData();
+            if(rawOrientationData.alpha !== undefined && rawOrientationData.alpha !== null) {
 
-            // Undo beta then gamma rotation to leave us with the base alpha rotation
-            euler.rotateY(toRad(-euler.gamma));
-            euler.rotateX(toRad(-euler.beta));
+                // calculate compass heading pointing out of the back of the screen
+                var euler = new FULLTILT.Euler();
+                euler.setFromRotationMatrix(orientationMatrix);
 
-            this.mCompassRenderer.setCompassHeading( 360 - euler.alpha );
+                // Undo beta then gamma rotation to leave us with the base alpha rotation
+                euler.rotateY(toRad(-euler.gamma));
+                euler.rotateX(toRad(-euler.beta));
+
+                this.mCompassRenderer.setCompassHeading( 360 - euler.alpha );
+
+            }
     	},
 
         render: function() {
