@@ -258,10 +258,6 @@
                 var euler = new FULLTILT.Euler();
                 euler.setFromRotationMatrix(orientationMatrix);
 
-                // Undo beta then gamma rotation to leave us with the base alpha rotation
-                euler.rotateY(toRad(-euler.gamma));
-                euler.rotateX(toRad(-euler.beta));
-
                 this.mCompassRenderer.setCompassHeading( 360 - euler.alpha );
 
             }
