@@ -20,11 +20,12 @@ Load 'index.html' and enjoy!
 
 #### Browser Compatibilty ####
 
-The Marine Compass is known to work (as of 12th February 2014) in the latest versions of the following browsers:
+The Marine Compass is known to work well (as of 8th October 2014) in the latest versions of the following browsers:
 
 * Google Chrome for Android
 * Opera for Android
 * Firefox for Android
+* Safari for iOS (iPhone and iPad)
 
 You can point one of the browsers above to the online demo available @ [https://richtr.github.io/Marine-Compass/index.html](https://richtr.github.io/Marine-Compass/index.html).
 
