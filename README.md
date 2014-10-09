@@ -8,7 +8,7 @@ A fully web standards compliant JavaScript 3D Compass application.
 A web browser with the following web standards support:
 
 * Device Orientation Events - [When/Where can I use Device Orientation Events?](http://caniuse.com/#feat=deviceorientation)
-* WebGL - [When/Where can I use WebGL?](http://caniuse.com/#feat=webgl) - note: Although this demo can work without WebGL, if this is not available then the Marine Compass will fallback to using [cWebGL](https://code.google.com/p/cwebgl/) with *significantly reduced performance*.
+* WebGL - [When/Where can I use WebGL?](http://caniuse.com/#feat=webgl)
 
 #### Usage ####
 
