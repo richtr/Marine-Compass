@@ -100,36 +100,10 @@
 
         try {
             this.gl = create3DContext(canvasElement);
+
             if(!this.gl) {
 
-              // Load cWebGL library
-              var cWebGLScriptEl = document.createElement('script');
-              cWebGLScriptEl.src = "scripts/cwebgl.min.js";
-
-              cWebGLScriptEl.onload = function(evt) {
-
-                this.gl = create3DContext(canvasElement);
-
-                if (!this.gl) {
-
-                  this.output('Unable to initialize WebGL. Your browser may not support it', 'http://get.webgl.org');
-
-                } else {
-
-                  this.output('WebGL is not natively supported on your platform. Entering fallback mode with reduced performance');
-
-                  this.gl.viewportWidth = canvasElement.getAttribute('width');
-                  this.gl.viewportHeight = canvasElement.getAttribute('height');
-
-                  this.init();
-
-                  this.render();
-
-                }
-
-              }.bind(this);
-
-              document.body.appendChild(cWebGLScriptEl);
+              this.output('Unable to initialize WebGL. Your browser may not support it', 'http://get.webgl.org');
 
             } else {
 
