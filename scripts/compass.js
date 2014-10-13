@@ -134,7 +134,19 @@
             var self = this;
 
             // Set up *compass* deviceorientation data capture via Full Tilt JS
-            this.orientationData = new FULLTILT.DeviceOrientation({ 'type': 'world' });
+            var deviceOrientationPromise = FULLTILT.getDeviceOrientation({ 'type': 'world' });
+
+            deviceOrientationPromise
+                .then(
+                    function(deviceOrientationObject) {
+                        self.orientationData = deviceOrientationObject;
+                    }
+                )
+                ['catch'](
+                    function(errorMessage) {
+                        console.error(errorMessage);
+                    }
+                );
 
             // Create rotation matrix object (calculated per canvas draw)
             this.rotationMatrix = mat4.create();
@@ -193,9 +205,6 @@
 
             this.gl.viewport(0, 0, this.gl.viewportWidth, this.gl.viewportHeight);
 
-            // Start Full Tilt JS deviceorientation data collection
-            this.orientationData.start();
-
         },
 
         output: function(str, link) {
@@ -227,6 +236,8 @@
         },
 
     	calculateRotationMatrix: function() {
+
+            if(!this.orientationData) return;
 
             // Pull the latest deviceorientation rotation matrix from Full Tilt JS
             var orientationMatrix = this.orientationData.getScreenAdjustedMatrix();
