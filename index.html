@@ -87,6 +87,17 @@ window.addEventListener('load', function() {
 
   new Compass( canvasElement, headingElement );
 
+
+  // Add emulator controls if 'emulator' query string is present in page URL
+  var emulatorRegexMatcher = /[\?\&]emulator([^\=\&\#\%]*)/i;
+  var match = window.location.toString().match(emulatorRegexMatcher);
+  console.log(match);
+  if(match && match[1] === "") {
+    var emulatorScript = document.createElement('script');
+    emulatorScript.src = "https://richtr.github.io/deviceorientationemulator/DeviceOrientationEmulator.js";
+    document.body.appendChild(emulatorScript);
+  }
+
 }, true);
 
 </script>
