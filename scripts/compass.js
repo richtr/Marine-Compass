@@ -377,7 +377,7 @@
         },
 
         setCompassHeading: function(heading) {
-            this.heading = heading;
+            this.heading = heading < 360 ? heading : heading % 360;
         },
 
         lastCompassHeading: 0,
