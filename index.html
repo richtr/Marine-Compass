@@ -61,6 +61,9 @@
 <script src="featuredetection/modernizr.js"></script>
 <script src="featuredetection/panel.js"></script>
 
+<!-- DEVICEORIENTATION EMULATOR DETECTION + BOOTSTRAP -->
+<script src="https://richtr.github.io/deviceorientationemulator/DeviceOrientationEmulator.js"></script>
+
 <script>
 
 window.addEventListener('load', function() {
@@ -86,16 +89,6 @@ window.addEventListener('load', function() {
   var headingElement = document.getElementById('headingReading');
 
   new Compass( canvasElement, headingElement );
-
-
-  // Add emulator controls if 'emulator' query string is present in page URL
-  var emulatorRegexMatcher = /[\?\&]emulator([^\=\&\#\%]*)/i;
-  var match = window.location.toString().match(emulatorRegexMatcher);
-  if(match && match[1] === "") {
-    var emulatorScript = document.createElement('script');
-    emulatorScript.src = "https://richtr.github.io/deviceorientationemulator/DeviceOrientationEmulator.js";
-    document.body.appendChild(emulatorScript);
-  }
 
 }, true);
 
